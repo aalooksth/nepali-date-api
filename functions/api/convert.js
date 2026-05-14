@@ -1,4 +1,4 @@
-import { adToBs, bsToAd } from '@sbmdkl/nepali-date-converter';
+import { adToBs, bsToAd } from '../lib/nepali-converter.js';
 
 export async function onRequest(context) {
   const { request } = context;
