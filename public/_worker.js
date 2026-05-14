@@ -1,3 +1,7 @@
+// Nepali Date API - Cloudflare Pages Worker
+// This file handles all API routing and date conversion logic.
+
+// --- Library Code ---
 var s;
 (function(n) {
   n.INVALID_DAY = "Day is invalid.", n.INVALID_YEAR = "Year is invalid.", n.INVALID_MONTH = "Month is invalid.", n.BS_DATE_OUT_OF_RANGE = "BS Date out of range", n.AD_DATE_OUT_OF_RANGE = "AD Date out of range", n.DATE_FORMAT_INVALID = "Date format is invalid", n.DATE_GREATER_THAN_TODAY = "Date cannot be greater then today";
@@ -125,48 +129,37 @@ t[2096] = [2096, 30, 31, 32, 32, 31, 30, 30, 29, 30, 29, 30, 30];
 t[2097] = [2097, 31, 32, 31, 32, 31, 30, 30, 30, 29, 30, 30, 30];
 t[2098] = [2098, 31, 31, 32, 31, 31, 31, 29, 30, 29, 30, 29, 31];
 t[2099] = [2099, 31, 32, 31, 32, 31, 30, 30, 30, 29, 29, 30, 31];
+
 const A = {
-  MAX_DAY: 32,
-  MIN_DAY: 1,
-  MAX_MONTH: 12,
-  MIN_MONTH: 1,
-  YEAR_LENGTH: 4,
-  MAX_YEAR_AD: 2040,
-  MAX_MONTH_AD: 31,
-  MIN_YEAR_BS: 1978,
-  MAX_YEAR_BS: 2099
-}, c = "1921-04-13", f = (n, o, e) => `${n}-${("0" + o).slice(-2)}-${("0" + e).slice(-2)}`, l = (n) => {
-  const o = n.split("-");
-  if (o.length !== 3)
-    throw new Error(T.DATE_FORMAT_INVALID);
-  return o.map(Number);
+  MAX_DAY: 32, MIN_DAY: 1, MAX_MONTH: 12, MIN_MONTH: 1, YEAR_LENGTH: 4,
+  MAX_YEAR_AD: 2040, MAX_MONTH_AD: 31, MIN_YEAR_BS: 1978, MAX_YEAR_BS: 2099
 };
+const c = "1921-04-13";
+const f = (n, o, e) => `${n}-${("0" + o).slice(-2)}-${("0" + e).slice(-2)}`;
+const l = (n) => n.split("-").map(Number);
+
 function E(n) {
   const [o, e, r] = l(n);
-  if (r > A.MAX_DAY || r < A.MIN_DAY || !r)
-    throw new Error(T.INVALID_DAY);
-  if (e > A.MAX_MONTH || e < A.MIN_MONTH || !e)
-    throw new Error(T.INVALID_MONTH);
-  if (!o || o.toString().length !== A.YEAR_LENGTH)
-    throw new Error(T.INVALID_YEAR);
+  if (r > A.MAX_DAY || r < A.MIN_DAY || !r) throw new Error(T.INVALID_DAY);
+  if (e > A.MAX_MONTH || e < A.MIN_MONTH || !e) throw new Error(T.INVALID_MONTH);
+  if (!o || o.toString().length !== A.YEAR_LENGTH) throw new Error(T.INVALID_YEAR);
   return { year: o, month: e, day: r };
 }
+
 function y(n) {
   const { year: o, month: e, day: r } = E(n);
-  if (o > A.MAX_YEAR_AD)
-    throw new Error(T.AD_DATE_OUT_OF_RANGE);
-  if (e > A.MAX_MONTH_AD)
-    throw new Error(T.INVALID_MONTH);
+  if (o > A.MAX_YEAR_AD) throw new Error(T.AD_DATE_OUT_OF_RANGE);
+  if (e > A.MAX_MONTH_AD) throw new Error(T.INVALID_MONTH);
   return f(o, e, r);
 }
+
 function u(n) {
   const { year: o, month: e, day: r } = E(n);
-  if (o < A.MIN_YEAR_BS || o > A.MAX_YEAR_BS)
-    throw new Error(T.BS_DATE_OUT_OF_RANGE);
-  if (r > t[o][e])
-    throw new Error(`No ${r} day exits in this month.`);
+  if (o < A.MIN_YEAR_BS || o > A.MAX_YEAR_BS) throw new Error(T.BS_DATE_OUT_OF_RANGE);
+  if (r > t[o][e]) throw new Error(`No ${r} day exits in this month.`);
   return f(o, e, r);
 }
+
 function h(n, o = !0) {
   let e = 0, r = 0, D = 0, _ = 0, a = !1;
   for (let M = A.MIN_YEAR_BS; M <= A.MAX_YEAR_BS && !a; M++)
@@ -177,52 +170,106 @@ function h(n, o = !0) {
       }
   return o ? f(e, r, D) : { currentYear: e, currentMonth: r, currentDay: D };
 }
-function w(n) {
+
+function adToBs(n) {
   n = y(n);
   const o = new Date(c), e = new Date(n), r = Math.floor((e.getTime() - o.getTime()) / 864e5);
-  if (r < 0)
-    throw new Error(T.AD_DATE_OUT_OF_RANGE);
+  if (r < 0) throw new Error(T.AD_DATE_OUT_OF_RANGE);
   return h(r);
 }
-function I(n, o) {
-  const e = new Date(n);
-  e.setDate(e.getDate() + o);
-  const r = e.getFullYear(), D = e.getMonth() + 1, _ = e.getDate();
-  return f(r, D, _);
-}
-function R(n) {
+
+function bsToAd(n) {
   n = u(n);
   const [o, e, r] = l(n);
   let D = 0;
   for (let _ = A.MIN_YEAR_BS; _ <= o; _++)
     if (_ === o) {
-      for (let a = A.MIN_MONTH; a < e; a++)
-        D += t[_][a];
+      for (let a = A.MIN_MONTH; a < e; a++) D += t[_][a];
       D += r - 1;
     } else
-      for (let a = A.MIN_MONTH; a <= A.MAX_MONTH; a++)
-        D += t[_][a];
-  return I(c, D);
+      for (let a = A.MIN_MONTH; a <= A.MAX_MONTH; a++) D += t[_][a];
+  const dt = new Date(c);
+  dt.setDate(dt.getDate() + D);
+  return f(dt.getFullYear(), dt.getMonth() + 1, dt.getDate());
 }
-function O() {
-  const n = new Date(c), e = Math.floor(((/* @__PURE__ */ new Date()).getTime() - n.getTime()) / 864e5);
-  return h(e, !1);
+
+function getDaysInBsMonth(y, m) {
+  return t[y][m];
 }
-function Y(n) {
-  const o = u(n), [e, r, D] = l(o), { currentYear: _, currentMonth: a, currentDay: M } = O();
-  if (e > _ || e === _ && r > a || e === _ && r === a && D > M)
-    throw new Error(T.DATE_GREATER_THAN_TODAY);
-  let i = {
-    year: 0,
-    month: 0,
-    day: t[e][r] - D
-  };
-  for (let N = e; N <= _; N++)
-    N === e ? M >= D ? (i.day = M - D, a >= r ? i.month = a - r : (i.month = A.MAX_MONTH - r + a, i.year--)) : (i.day += M, a > r ? i.month = a - r - 1 : (i.month = A.MAX_MONTH - r + a - 1, i.year--)) : i.year++;
-  return i;
-}
-export {
-  w as adToBs,
-  R as bsToAd,
-  Y as calculateAge
+
+// --- Router Logic ---
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    const headers = {
+      "Content-Type": "application/json;charset=UTF-8",
+      "Access-Control-Allow-Origin": "*"
+    };
+
+    // 1. /api/today.json
+    if (path === "/api/today.json" || path === "/api/today") {
+      const today = new Date();
+      const adDate = f(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      const bsDateRaw = adToBs(adDate);
+      const [bsYear, bsMonth, bsDay] = bsDateRaw.split("-").map(Number);
+      const daysInMonth = getDaysInBsMonth(bsYear, bsMonth);
+
+      const response = {
+        status: "success",
+        data: {
+          ad: { date: adDate, year: today.getFullYear(), month: today.getMonth() + 1, day: today.getDate() },
+          bs: { date: bsDateRaw, year: bsYear, month: bsMonth, day: bsDay, daysInMonth, daysTillMonthEnd: daysInMonth - bsDay }
+        },
+        meta: { generatedAt: new Date().toISOString() }
+      };
+      return new Response(JSON.stringify(response, null, 2), { headers });
+    }
+
+    // 2. /api/convert
+    if (path === "/api/convert") {
+      const adParam = url.searchParams.get("ad");
+      const bsParam = url.searchParams.get("bs");
+      let responseObj = {};
+      try {
+        if (adParam) {
+          const result = adToBs(adParam);
+          responseObj = { status: "success", data: { provided: { type: "AD", date: adParam }, converted: { type: "BS", date: result } } };
+        } else if (bsParam) {
+          const result = bsToAd(bsParam);
+          responseObj = { status: "success", data: { provided: { type: "BS", date: bsParam }, converted: { type: "AD", date: result } } };
+        } else {
+          responseObj = { status: "error", message: "Missing 'ad' or 'bs' parameter." };
+        }
+      } catch (e) {
+        responseObj = { status: "error", message: e.message };
+      }
+      return new Response(JSON.stringify(responseObj, null, 2), { headers });
+    }
+
+    // 3. /api/bs/today/:part
+    if (path.startsWith("/api/bs/today/")) {
+      const part = path.split("/").pop();
+      const today = new Date();
+      const adDate = f(today.getFullYear(), today.getMonth() + 1, today.getDate());
+      const bsDateRaw = adToBs(adDate);
+      const [bsYear, bsMonth, bsDay] = bsDateRaw.split("-").map(Number);
+      
+      let result = "";
+      switch (part) {
+        case "date": result = bsDateRaw; break;
+        case "year": result = String(bsYear); break;
+        case "month": result = String(bsMonth); break;
+        case "day": result = String(bsDay); break;
+        case "days-in-month": result = String(getDaysInBsMonth(bsYear, bsMonth)); break;
+        case "days-till-month-end": result = String(getDaysInBsMonth(bsYear, bsMonth) - bsDay); break;
+        default: return env.ASSETS.fetch(request);
+      }
+      return new Response(result, { headers: { ...headers, "Content-Type": "text/plain;charset=UTF-8" } });
+    }
+
+    // Fallback to static assets
+    return env.ASSETS.fetch(request);
+  }
 };
